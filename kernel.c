@@ -634,8 +634,11 @@ void handletimerinterrupt(short segment, short sp)
 				if (i==MAXPROCESSES)
 					i=0;
 			} while(process_table[i].active!=1);
-			context_switches++;
-			process_table[i].context_switches++;
+			if(i!=current_process) 
+			{
+				context_switches++;
+				process_table[i].context_switches++;
+			}
 		break;
 		case ROUND_ROBIN_PRIORITY:
 			do
@@ -644,8 +647,11 @@ void handletimerinterrupt(short segment, short sp)
 				if (i==MAXPROCESSES)
 					i=0;
 			} while(process_table[i].active!=1);
-			context_switches++;
-			process_table[i].context_switches++;
+			if(i!=current_process) 
+			{
+				context_switches++;
+				process_table[i].context_switches++;
+			}
 		break;
 	}
 	current_process=i;

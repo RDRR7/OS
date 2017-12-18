@@ -4,7 +4,7 @@
 main()
 {
 	char program[12800];
-	set_scheduler(PRIORITY);
+	set_scheduler(ROUND_ROBIN);
 	
 	setup();
 
