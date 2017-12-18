@@ -18,6 +18,7 @@ mode.  The -ansi flag must be set.
 /*we're limited to 8 processes if we stick to real mode and procs are 
 64k*/
 #define MAXPROCESSES 8
+#define MINPRIORITY 'c'
 
 #include "scheduler.h"
 
@@ -30,7 +31,6 @@ void initialize_process_table();
 /*The kernel starts here*/
 main()
 {
-	set_scheduler(FIFO);
 	dokernel();
 	terminate();
 }
@@ -96,12 +96,16 @@ struct process_table_entry
 	unsigned short segment;
 	/*process's stack pointer value*/
 	unsigned short sp;
+	/*priority a-c, a is the highest*/
+	char priority;
 };
 
 /*the process table*/
 struct process_table_entry process_table[MAXPROCESSES];
 /*the current process is 0 - the kernel*/
 int current_process=0;
+
+char scheduler=FIFO;
 
 /*this initializes the process table and sets up the kernel proc*/
 void initialize_process_table()
@@ -116,9 +120,11 @@ void initialize_process_table()
 		process_table[i].segment=(i+1)*0x1000;
 		/*initial stack pointer is ff00*/
 		process_table[i].sp=0xff00;
+		process_table[i].priority=MINPRIORITY;
 	}
 	/*process 0 is the kernel*/
 	process_table[0].active=3;
+	process_table[0].priority=MINPRIORITY+1;
 }
 
 /*
@@ -398,6 +404,7 @@ void executeprogram(char* filebuffer, int length, int foreground)
 	seg=process_table[i].segment;
 	process_table[i].active=1;
 	process_table[i].sp=0xff00;
+	process_table[i].priority=MINPRIORITY;
 
 	/*get the id of the process that called execute*/
 	procid=getprocessid();
@@ -487,10 +494,19 @@ void handleinterrupt21(char type, char* address1, char* address2, char* address3
 		executeprogram(address1,address2,1);
 	else if (type==9)
 		kill(address1);
+	else if (type==10) {
+		setdatasegkernel();
+		scheduler=address1;	
+		restoredataseg();
+	}
+	else if (type==11) {
+		setdatasegkernel();
+		process_table[current_process].priority=address1;
+		restoredataseg();
+	}
 	else
 		bios_printstr("ERROR: Invalid interrupt 21 code\r\n\0");
 }
-
 
 /*perform a process switch*/
 void handletimerinterrupt(short segment, short sp)
@@ -535,8 +551,9 @@ void handletimerinterrupt(short segment, short sp)
 
 	/*find an active process round robin style*/
 	i=current_process;
-	printtop(get_scheduler(),cntr-12);
-	switch(get_scheduler())
+	printtop(' ',cntr-12);
+	printtop(scheduler,cntr-13);
+	switch(scheduler)
 	{
 		case FIFO:
 			if(process_table[i].active!=1) 
@@ -549,7 +566,31 @@ void handletimerinterrupt(short segment, short sp)
 				} while(process_table[i].active!=1);
 			}
 		break;
+		case PRIORITY:
+			if(process_table[i].active!=1) 
+			{
+				char p='a';
+				do
+				{
+					do
+					{
+						i++;
+						if (i==MAXPROCESSES)
+							i=0;
+					} while(process_table[i].active!=1 && process_table[i].priority!=p);
+					p++;
+				} while(p<=MINPRIORITY && process_table[i].priority!=(p-1));
+			}
+		break;
 		case ROUND_ROBIN:
+			do
+			{
+				i++;
+				if (i==MAXPROCESSES)
+					i=0;
+			} while(process_table[i].active!=1);
+		break;
+		case ROUND_ROBIN_PRIORITY:
 			do
 			{
 				i++;

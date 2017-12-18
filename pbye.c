@@ -3,8 +3,10 @@
 main()
 {
 	int i,j,k=1,l;
+	set_priority('a');
 
 	setup();
+
 	for (i=0; i<5; i++)
 	{
 		printstring("Goodbye\r\n\0");

@@ -20,3 +20,5 @@ void setcursor(int,int);
 void setchar(char,char,int,int);
 void setstring(char*,char,int,int);
 void getnumberstring(char*,int);
+void set_scheduler(char);
+void set_priority(char);
