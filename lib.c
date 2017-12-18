@@ -222,3 +222,8 @@ void set_scheduler(char scheduler)
 {
 	int21(10, scheduler);
 }
+
+void set_priority(char priority)
+{
+	int21(11, priority);
+}

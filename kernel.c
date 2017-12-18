@@ -18,6 +18,7 @@ mode.  The -ansi flag must be set.
 /*we're limited to 8 processes if we stick to real mode and procs are 
 64k*/
 #define MAXPROCESSES 8
+#define MINPRIORITY 'c'
 
 #include "scheduler.h"
 
@@ -95,6 +96,8 @@ struct process_table_entry
 	unsigned short segment;
 	/*process's stack pointer value*/
 	unsigned short sp;
+	/*priority a-c, a is the highest*/
+	char priority;
 };
 
 /*the process table*/
@@ -117,9 +120,11 @@ void initialize_process_table()
 		process_table[i].segment=(i+1)*0x1000;
 		/*initial stack pointer is ff00*/
 		process_table[i].sp=0xff00;
+		process_table[i].priority=MINPRIORITY;
 	}
 	/*process 0 is the kernel*/
 	process_table[0].active=3;
+	process_table[0].priority=MINPRIORITY+1;
 }
 
 /*
@@ -399,6 +404,7 @@ void executeprogram(char* filebuffer, int length, int foreground)
 	seg=process_table[i].segment;
 	process_table[i].active=1;
 	process_table[i].sp=0xff00;
+	process_table[i].priority=MINPRIORITY;
 
 	/*get the id of the process that called execute*/
 	procid=getprocessid();
@@ -493,10 +499,14 @@ void handleinterrupt21(char type, char* address1, char* address2, char* address3
 		scheduler=address1;	
 		restoredataseg();
 	}
+	else if (type==11) {
+		setdatasegkernel();
+		process_table[current_process].priority=address1;
+		restoredataseg();
+	}
 	else
 		bios_printstr("ERROR: Invalid interrupt 21 code\r\n\0");
 }
-
 
 /*perform a process switch*/
 void handletimerinterrupt(short segment, short sp)
@@ -557,6 +567,22 @@ void handletimerinterrupt(short segment, short sp)
 			}
 		break;
 		case PRIORITY:
+			if(process_table[i].active!=1) 
+			{
+				char p='a';
+				do
+				{
+					do
+					{
+						i++;
+						if (i==MAXPROCESSES)
+							i=0;
+					} while(process_table[i].active!=1 && process_table[i].priority!=p);
+					p++;
+				} while(p<=MINPRIORITY && process_table[i].priority!=(p-1));
+			}
+		break;
+		case ROUND_ROBIN:
 			do
 			{
 				i++;
@@ -564,7 +590,7 @@ void handletimerinterrupt(short segment, short sp)
 					i=0;
 			} while(process_table[i].active!=1);
 		break;
-		case ROUND_ROBIN:
+		case ROUND_ROBIN_PRIORITY:
 			do
 			{
 				i++;

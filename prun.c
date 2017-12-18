@@ -4,7 +4,7 @@
 main()
 {
 	char program[12800];
-	set_scheduler(ROUND_ROBIN);
+	set_scheduler(PRIORITY);
 	
 	setup();
 
@@ -16,6 +16,6 @@ main()
 	
 	readfile("pbye",program);
 	executeprogrambackground(program,12800);
-	
+
 	exit();
 }
