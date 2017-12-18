@@ -19,6 +19,8 @@ mode.  The -ansi flag must be set.
 64k*/
 #define MAXPROCESSES 8
 
+#include "scheduler.h"
+
 void scpy(char*,char*,int);
 void dokernel();
 void handleinterrupt21(char);
@@ -28,6 +30,7 @@ void initialize_process_table();
 /*The kernel starts here*/
 main()
 {
+	set_scheduler(FIFO);
 	dokernel();
 	terminate();
 }
@@ -532,13 +535,29 @@ void handletimerinterrupt(short segment, short sp)
 
 	/*find an active process round robin style*/
 	i=current_process;
-	do
+	printtop(get_scheduler(),cntr-12);
+	switch(get_scheduler())
 	{
-		i++;
-		if (i==MAXPROCESSES)
-			i=0;
-	} while(process_table[i].active!=1);
-
+		case FIFO:
+			if(process_table[i].active!=1) 
+			{
+				do
+				{
+					i++;
+					if (i==MAXPROCESSES)
+						i=0;
+				} while(process_table[i].active!=1);
+			}
+		break;
+		case ROUND_ROBIN:
+			do
+			{
+				i++;
+				if (i==MAXPROCESSES)
+					i=0;
+			} while(process_table[i].active!=1);
+		break;
+	}
 	current_process=i;
 
 	/*restore that process*/

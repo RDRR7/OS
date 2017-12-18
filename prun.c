@@ -4,7 +4,7 @@ main()
 {
 	char program[12800];
 	setup();
-	
+
 	readfile("phi",program);
     executeprogrambackground(program,12800);
 
