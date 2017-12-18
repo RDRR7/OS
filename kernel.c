@@ -98,6 +98,7 @@ struct process_table_entry
 	unsigned short sp;
 	/*priority a-c, a is the highest*/
 	char priority;
+	int context_switches;
 };
 
 /*the process table*/
@@ -123,6 +124,7 @@ void initialize_process_table()
 		/*initial stack pointer is ff00*/
 		process_table[i].sp=0xff00;
 		process_table[i].priority=MINPRIORITY;
+		process_table[i].context_switches=0;
 	}
 	/*process 0 is the kernel*/
 	process_table[0].active=3;
@@ -407,6 +409,7 @@ void executeprogram(char* filebuffer, int length, int foreground)
 	process_table[i].active=1;
 	process_table[i].sp=0xff00;
 	process_table[i].priority=MINPRIORITY;
+	process_table[i].context_switches=0;
 
 	/*get the id of the process that called execute*/
 	procid=getprocessid();
@@ -549,6 +552,7 @@ void handletimerinterrupt(short segment, short sp)
 	{
 		if (process_table[i].active>0)
 		{
+			getnumberstring(context_switches_string, process_table[i].context_switches);
 			printtop('P',cntr-5);
 			printtop((char)(i+0x30),cntr-4);
 			printtop(' ',cntr-3);
@@ -558,8 +562,8 @@ void handletimerinterrupt(short segment, short sp)
 				printtop('W',cntr-2);
 			else if (process_table[i].active==3)
 				printtop('K',cntr-2);
-			printtop(' ',cntr-1);
-			printtop(' ',cntr);
+			printtop(context_switches_string[1],cntr-1);
+			printtop(context_switches_string[0],cntr);
 			cntr=cntr-6;
 		}
 	}
@@ -602,6 +606,7 @@ void handletimerinterrupt(short segment, short sp)
 						i=0;
 				} while(process_table[i].active!=1);
 				context_switches++;
+				process_table[i].context_switches++;
 			}
 		break;
 		case PRIORITY:
@@ -619,6 +624,7 @@ void handletimerinterrupt(short segment, short sp)
 					p++;
 				} while(p<=MINPRIORITY && process_table[i].priority!=(p-1));
 				context_switches++;
+				process_table[i].context_switches++;
 			}
 		break;
 		case ROUND_ROBIN:
@@ -629,6 +635,7 @@ void handletimerinterrupt(short segment, short sp)
 					i=0;
 			} while(process_table[i].active!=1);
 			context_switches++;
+			process_table[i].context_switches++;
 		break;
 		case ROUND_ROBIN_PRIORITY:
 			do
@@ -638,6 +645,7 @@ void handletimerinterrupt(short segment, short sp)
 					i=0;
 			} while(process_table[i].active!=1);
 			context_switches++;
+			process_table[i].context_switches++;
 		break;
 	}
 	current_process=i;
