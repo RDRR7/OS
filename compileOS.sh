@@ -9,4 +9,3 @@ gcc -o loadFile loadFile.c
 ./loadProgram.sh pbye
 ./loadProgram.sh pnum
 ./loadProgram.sh prun
-
