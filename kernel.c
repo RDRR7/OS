@@ -105,6 +105,8 @@ struct process_table_entry process_table[MAXPROCESSES];
 /*the current process is 0 - the kernel*/
 int current_process=0;
 
+int context_switches=0;
+
 char scheduler=FIFO;
 
 /*this initializes the process table and sets up the kernel proc*/
@@ -508,10 +510,36 @@ void handleinterrupt21(char type, char* address1, char* address2, char* address3
 		bios_printstr("ERROR: Invalid interrupt 21 code\r\n\0");
 }
 
+void getnumberstring(char* pnum, int number)
+{
+	char num[12];
+	int d=1;
+	int i=0;
+	int j;
+
+	/*convert the number to a string digit by digit*/
+	while(i<10)
+	{
+		num[i]=mod(div(number,d),10)+0x30;
+		i++;
+		d=d*10;
+		if (div(number,d)==0)
+			break;
+	}
+
+	/*reverse it to read most significant to least significant*/
+	j=0;
+	for (d=i-1; d>=0; d--)
+		pnum[j++]=num[d];
+	pnum[j]=0;
+}
+
 /*perform a process switch*/
 void handletimerinterrupt(short segment, short sp)
 {
-	int i,cntr=79;
+	int i,j,cntr=79;
+	char context_switches_string[12];
+
 	/*save current process*/
 	process_table[current_process].segment=segment;
 	process_table[current_process].sp=sp;
@@ -549,6 +577,15 @@ void handletimerinterrupt(short segment, short sp)
 	printtop('r',cntr-10);
 	printtop('P',cntr-11);
 
+	getnumberstring(context_switches_string, context_switches);
+
+	printtop(' ',cntr-14);
+	for(j=0; j<12; j++) {
+		if(context_switches_string[j]==0)
+			break;
+		printtop(context_switches_string[j],cntr-15-j);
+	}
+
 	/*find an active process round robin style*/
 	i=current_process;
 	printtop(' ',cntr-12);
@@ -564,6 +601,7 @@ void handletimerinterrupt(short segment, short sp)
 					if (i==MAXPROCESSES)
 						i=0;
 				} while(process_table[i].active!=1);
+				context_switches++;
 			}
 		break;
 		case PRIORITY:
@@ -577,9 +615,10 @@ void handletimerinterrupt(short segment, short sp)
 						i++;
 						if (i==MAXPROCESSES)
 							i=0;
-					} while(process_table[i].active!=1 && process_table[i].priority!=p);
+					} while(process_table[i].active!=1 && process_table[i].priority==p);
 					p++;
 				} while(p<=MINPRIORITY && process_table[i].priority!=(p-1));
+				context_switches++;
 			}
 		break;
 		case ROUND_ROBIN:
@@ -589,6 +628,7 @@ void handletimerinterrupt(short segment, short sp)
 				if (i==MAXPROCESSES)
 					i=0;
 			} while(process_table[i].active!=1);
+			context_switches++;
 		break;
 		case ROUND_ROBIN_PRIORITY:
 			do
@@ -597,6 +637,7 @@ void handletimerinterrupt(short segment, short sp)
 				if (i==MAXPROCESSES)
 					i=0;
 			} while(process_table[i].active!=1);
+			context_switches++;
 		break;
 	}
 	current_process=i;
