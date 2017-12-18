@@ -218,3 +218,7 @@ void getnumberstring(char* pnum, int number)
 	pnum[j]=0;
 }
 
+void set_scheduler(char scheduler)
+{
+	int21(10, scheduler);
+}

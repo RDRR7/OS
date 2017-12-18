@@ -1,8 +1,11 @@
 #include "lib.h"
+#include "scheduler.h"
 
 main()
 {
 	char program[12800];
+	set_scheduler(ROUND_ROBIN);
+	
 	setup();
 
 	readfile("phi",program);

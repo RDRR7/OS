@@ -30,7 +30,6 @@ void initialize_process_table();
 /*The kernel starts here*/
 main()
 {
-	set_scheduler(FIFO);
 	dokernel();
 	terminate();
 }
@@ -102,6 +101,8 @@ struct process_table_entry
 struct process_table_entry process_table[MAXPROCESSES];
 /*the current process is 0 - the kernel*/
 int current_process=0;
+
+char scheduler=FIFO;
 
 /*this initializes the process table and sets up the kernel proc*/
 void initialize_process_table()
@@ -487,6 +488,11 @@ void handleinterrupt21(char type, char* address1, char* address2, char* address3
 		executeprogram(address1,address2,1);
 	else if (type==9)
 		kill(address1);
+	else if (type==10) {
+		setdatasegkernel();
+		scheduler=address1;	
+		restoredataseg();
+	}
 	else
 		bios_printstr("ERROR: Invalid interrupt 21 code\r\n\0");
 }
@@ -535,8 +541,9 @@ void handletimerinterrupt(short segment, short sp)
 
 	/*find an active process round robin style*/
 	i=current_process;
-	printtop(get_scheduler(),cntr-12);
-	switch(get_scheduler())
+	printtop(' ',cntr-12);
+	printtop(scheduler,cntr-13);
+	switch(scheduler)
 	{
 		case FIFO:
 			if(process_table[i].active!=1) 
@@ -548,6 +555,14 @@ void handletimerinterrupt(short segment, short sp)
 						i=0;
 				} while(process_table[i].active!=1);
 			}
+		break;
+		case PRIORITY:
+			do
+			{
+				i++;
+				if (i==MAXPROCESSES)
+					i=0;
+			} while(process_table[i].active!=1);
 		break;
 		case ROUND_ROBIN:
 			do
