@@ -4,18 +4,18 @@
 main()
 {
 	char program[12800];
-	set_scheduler(PRIORITY);
+	set_scheduler(ROUND_ROBIN);
 	
 	setup();
 
 	readfile("phi",program);
-    executeprogrambackground(program,12800,'c');
+    executeprogrambackground(program,12800,'b');
 
 	readfile("phow",program);
     executeprogrambackground(program,12800,'a');
 	
 	readfile("pbye",program);
-	executeprogrambackground(program,12800,'b');
+	executeprogrambackground(program,12800,'c');
 
 	exit();
 }

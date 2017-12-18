@@ -124,15 +124,15 @@ void deletefile(char* name)
 }
 
 /*execute the program*/
-void executeprogram(char* buffer, int bytelength)
+void executeprogram(char* buffer, int bytelength, char priority)
 {
-	int21(8,buffer,bytelength);
+	int21(8,buffer,bytelength, priority);
 }
 
 /*execute the program, but don't make the caller wait*/
-void executeprogrambackground(char* buffer, int bytelength)
+void executeprogrambackground(char* buffer, int bytelength, char priority)
 {
-	int21(6,buffer,bytelength);
+	int21(6,buffer,bytelength, priority);
 }
 
 /*terminate program - this must be called by the program before ending*/

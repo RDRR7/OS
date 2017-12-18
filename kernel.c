@@ -18,7 +18,6 @@ mode.  The -ansi flag must be set.
 /*we're limited to 8 processes if we stick to real mode and procs are 
 64k*/
 #define MAXPROCESSES 8
-#define MINPRIORITY 'c'
 
 #include "scheduler.h"
 
@@ -128,7 +127,7 @@ void initialize_process_table()
 	}
 	/*process 0 is the kernel*/
 	process_table[0].active=3;
-	process_table[0].priority=MINPRIORITY+1;
+	process_table[0].priority=MINPRIORITY;
 }
 
 /*
@@ -384,7 +383,7 @@ void writefile(char* name, char* buffer, int sectorlength)
 int procid;
 
 /*execute program finds an available process table entry and puts the program in the appropriate segment*/
-void executeprogram(char* filebuffer, int length, int foreground)
+void executeprogram(char* filebuffer, int length, int foreground, char priority)
 {
 	char* programbuffer;
 	int i,j;
@@ -404,11 +403,13 @@ void executeprogram(char* filebuffer, int length, int foreground)
 		restoredataseg();
 		return;
 	}
+	if(priority<'a' || priority>MINPRIORITY)
+		priority='c';
 	/*set the process entry to active, set the stack pointer*/
 	seg=process_table[i].segment;
 	process_table[i].active=1;
 	process_table[i].sp=0xff00;
-	process_table[i].priority=MINPRIORITY;
+	process_table[i].priority=priority;
 	process_table[i].context_switches=0;
 
 	/*get the id of the process that called execute*/
@@ -492,11 +493,11 @@ void handleinterrupt21(char type, char* address1, char* address2, char* address3
 	else if (type==5)
 		delfile(address1);
 	else if (type==6)
-		executeprogram(address1,address2,0);
+		executeprogram(address1,address2,0, address3);
 	else if (type==7)
 		terminateprogram();
 	else if (type==8)
-		executeprogram(address1,address2,1);
+		executeprogram(address1,address2,1, address3);
 	else if (type==9)
 		kill(address1);
 	else if (type==10) {
@@ -612,17 +613,30 @@ void handletimerinterrupt(short segment, short sp)
 		case PRIORITY:
 			if(process_table[i].active!=1) 
 			{
-				char p='a';
-				do
+				char p;
+				int found=0;
+
+				for(p='a'; p<=MINPRIORITY; p++) 
 				{
-					do
+					for(i=current_process+1; i<=MAXPROCESSES; i++)
 					{
-						i++;
-						if (i==MAXPROCESSES)
+						if (i==MAXPROCESSES) 
+						{
 							i=0;
-					} while(process_table[i].active!=1 && process_table[i].priority==p);
-					p++;
-				} while(p<=MINPRIORITY && process_table[i].priority!=(p-1));
+						}
+						if(i==current_process)
+						{
+							break;
+						}
+						if(process_table[i].active==1  && process_table[i].priority==p)
+						{
+							found=1;
+							break;
+						}
+					}
+					if(found)
+						break;
+				}
 				context_switches++;
 				process_table[i].context_switches++;
 			}
