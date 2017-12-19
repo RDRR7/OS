@@ -545,7 +545,9 @@ void handletimerinterrupt(short segment, short sp)
 {
 	int i,j,cntr=79;
 	char context_switches_string[12];
-
+	char p;
+	int found=0;
+	
 	/*save current process*/
 	process_table[current_process].segment=segment;
 	process_table[current_process].sp=sp;
@@ -565,8 +567,8 @@ void handletimerinterrupt(short segment, short sp)
 				printtop('W',cntr-2);
 			else if (process_table[i].active==3)
 				printtop('K',cntr-2);
-			printtop(context_switches_string[1],cntr-1);
-			printtop(context_switches_string[0],cntr);
+			printtop(context_switches_string[0],cntr-1);
+			printtop(context_switches_string[1],cntr);
 			cntr=cntr-6;
 		}
 	}
@@ -586,8 +588,9 @@ void handletimerinterrupt(short segment, short sp)
 
 	getnumberstring(context_switches_string, context_switches);
 
+	printtop(context_switches_string[0],cntr-17);
 	printtop(context_switches_string[1],cntr-16);
-	printtop(context_switches_string[0],cntr-15);
+	printtop(context_switches_string[2],cntr-15);
 	printtop(' ',cntr-14);
 
 	/*find an active process round robin style*/
@@ -610,9 +613,6 @@ void handletimerinterrupt(short segment, short sp)
 		case PRIORITY:
 			if(process_table[i].active!=1) 
 			{
-				char p;
-				int found=0;
-
 				for(p='a'; p<=MINPRIORITY; p++) 
 				{
 					for(i=current_process+1; i<=MAXPROCESSES; i++)
@@ -641,28 +641,22 @@ void handletimerinterrupt(short segment, short sp)
 			} while(process_table[i].active!=1);
 		break;
 		case ROUND_ROBIN_PRIORITY:
-			if(1==1) 
+			for(p='a'; p<=MINPRIORITY; p++) 
 			{
-				int found=0;
-				char p;
-
-				for(p='a'; p<=MINPRIORITY; p++) 
+				for(i=current_process+1; i<=MAXPROCESSES; i++)
 				{
-					for(i=current_process+1; i<=MAXPROCESSES; i++)
-					{
-						if (i==MAXPROCESSES) 
-							i=0;
-						if(process_table[i].active==1  && process_table[i].priority==p)
-						{
-							found=1;
-							break;
-						}
-						if(i==current_process)
-							break;
-					}
-					if(found)
+					if (i==MAXPROCESSES) 
+						i=0;
+					if(i==current_process)
 						break;
+					if(process_table[i].active==1  && process_table[i].priority==p)
+					{
+						found=1;
+						break;
+					}
 				}
+				if(found)
+					break;
 			}
 		break;
 	}
