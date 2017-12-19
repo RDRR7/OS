@@ -500,12 +500,14 @@ void handleinterrupt21(char type, char* address1, char* address2, char* address3
 		executeprogram(address1,address2,1, address3);
 	else if (type==9)
 		kill(address1);
-	else if (type==10) {
+	else if (type==10)
+	{
 		setdatasegkernel();
 		scheduler=address1;	
 		restoredataseg();
 	}
-	else if (type==11) {
+	else if (type==11) 
+	{
 		setdatasegkernel();
 		process_table[current_process].priority=address1;
 		restoredataseg();
@@ -584,12 +586,9 @@ void handletimerinterrupt(short segment, short sp)
 
 	getnumberstring(context_switches_string, context_switches);
 
+	printtop(context_switches_string[1],cntr-16);
+	printtop(context_switches_string[0],cntr-15);
 	printtop(' ',cntr-14);
-	for(j=0; j<12; j++) {
-		if(context_switches_string[j]==0)
-			break;
-		printtop(context_switches_string[j],cntr-15-j);
-	}
 
 	/*find an active process round robin style*/
 	i=current_process;
@@ -606,8 +605,6 @@ void handletimerinterrupt(short segment, short sp)
 					if (i==MAXPROCESSES)
 						i=0;
 				} while(process_table[i].active!=1);
-				context_switches++;
-				process_table[i].context_switches++;
 			}
 		break;
 		case PRIORITY:
@@ -621,13 +618,9 @@ void handletimerinterrupt(short segment, short sp)
 					for(i=current_process+1; i<=MAXPROCESSES; i++)
 					{
 						if (i==MAXPROCESSES) 
-						{
 							i=0;
-						}
 						if(i==current_process)
-						{
 							break;
-						}
 						if(process_table[i].active==1  && process_table[i].priority==p)
 						{
 							found=1;
@@ -637,8 +630,6 @@ void handletimerinterrupt(short segment, short sp)
 					if(found)
 						break;
 				}
-				context_switches++;
-				process_table[i].context_switches++;
 			}
 		break;
 		case ROUND_ROBIN:
@@ -648,11 +639,6 @@ void handletimerinterrupt(short segment, short sp)
 				if (i==MAXPROCESSES)
 					i=0;
 			} while(process_table[i].active!=1);
-			if(i!=current_process) 
-			{
-				context_switches++;
-				process_table[i].context_switches++;
-			}
 		break;
 		case ROUND_ROBIN_PRIORITY:
 			if(1==1) 
@@ -664,31 +650,26 @@ void handletimerinterrupt(short segment, short sp)
 				{
 					for(i=current_process+1; i<=MAXPROCESSES; i++)
 					{
-						printtop((char)(i+0x30),5);
 						if (i==MAXPROCESSES) 
-						{
 							i=0;
-						}
 						if(process_table[i].active==1  && process_table[i].priority==p)
 						{
 							found=1;
 							break;
 						}
 						if(i==current_process)
-						{
 							break;
-						}
 					}
 					if(found)
 						break;
 				}
-				if(i!=current_process) 
-				{
-					context_switches++;
-					process_table[i].context_switches++;
-				}
 			}
 		break;
+	}
+	if(i!=current_process)
+	{
+		context_switches++;
+		process_table[i].context_switches++;
 	}
 	current_process=i;
 

@@ -12,7 +12,7 @@ main()
     executeprogrambackground(program,12800,'c');
 
 	readfile("phow",program);
-    executeprogrambackground(program,12800,'b');
+    executeprogrambackground(program,12800,'a');
 	
 	readfile("pbye",program);
 	executeprogrambackground(program,12800,'a');
