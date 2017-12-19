@@ -9,7 +9,7 @@
 TIMER_LOW equ 0xff
 TIMER_HIGH equ 0xff
 ;a process switch happens every TIMER_MAX timer interrupts
-TIMER_MAX equ 1
+TIMER_MAX equ 4 ;don´t set lower than 4
 
 	.global _bios_printstr
 	.global _terminate

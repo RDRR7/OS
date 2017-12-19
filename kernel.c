@@ -19,6 +19,8 @@ mode.  The -ansi flag must be set.
 64k*/
 #define MAXPROCESSES 8
 
+#include "scheduler.h"
+
 void scpy(char*,char*,int);
 void dokernel();
 void handleinterrupt21(char);
@@ -93,12 +95,19 @@ struct process_table_entry
 	unsigned short segment;
 	/*process's stack pointer value*/
 	unsigned short sp;
+	/*priority a-c, a is the highest*/
+	char priority;
+	int context_switches;
 };
 
 /*the process table*/
 struct process_table_entry process_table[MAXPROCESSES];
 /*the current process is 0 - the kernel*/
 int current_process=0;
+
+int context_switches=0;
+
+char scheduler=FIFO;
 
 /*this initializes the process table and sets up the kernel proc*/
 void initialize_process_table()
@@ -113,9 +122,12 @@ void initialize_process_table()
 		process_table[i].segment=(i+1)*0x1000;
 		/*initial stack pointer is ff00*/
 		process_table[i].sp=0xff00;
+		process_table[i].priority=MINPRIORITY;
+		process_table[i].context_switches=0;
 	}
 	/*process 0 is the kernel*/
 	process_table[0].active=3;
+	process_table[0].priority=MINPRIORITY;
 }
 
 /*
@@ -371,7 +383,7 @@ void writefile(char* name, char* buffer, int sectorlength)
 int procid;
 
 /*execute program finds an available process table entry and puts the program in the appropriate segment*/
-void executeprogram(char* filebuffer, int length, int foreground)
+void executeprogram(char* filebuffer, int length, int foreground, char priority)
 {
 	char* programbuffer;
 	int i,j;
@@ -391,10 +403,14 @@ void executeprogram(char* filebuffer, int length, int foreground)
 		restoredataseg();
 		return;
 	}
+	if(priority<'a' || priority>MINPRIORITY)
+		priority=MINPRIORITY;
 	/*set the process entry to active, set the stack pointer*/
 	seg=process_table[i].segment;
 	process_table[i].active=1;
 	process_table[i].sp=0xff00;
+	process_table[i].priority=priority;
+	process_table[i].context_switches=0;
 
 	/*get the id of the process that called execute*/
 	procid=getprocessid();
@@ -477,22 +493,61 @@ void handleinterrupt21(char type, char* address1, char* address2, char* address3
 	else if (type==5)
 		delfile(address1);
 	else if (type==6)
-		executeprogram(address1,address2,0);
+		executeprogram(address1,address2,0, address3);
 	else if (type==7)
 		terminateprogram();
 	else if (type==8)
-		executeprogram(address1,address2,1);
+		executeprogram(address1,address2,1, address3);
 	else if (type==9)
 		kill(address1);
+	else if (type==10)
+	{
+		setdatasegkernel();
+		scheduler=address1;	
+		restoredataseg();
+	}
+	else if (type==11) 
+	{
+		setdatasegkernel();
+		process_table[current_process].priority=address1;
+		restoredataseg();
+	}
 	else
 		bios_printstr("ERROR: Invalid interrupt 21 code\r\n\0");
 }
 
+void getnumberstring(char* pnum, int number)
+{
+	char num[12];
+	int d=1;
+	int i=0;
+	int j;
+
+	/*convert the number to a string digit by digit*/
+	while(i<10)
+	{
+		num[i]=mod(div(number,d),10)+0x30;
+		i++;
+		d=d*10;
+		if (div(number,d)==0)
+			break;
+	}
+
+	/*reverse it to read most significant to least significant*/
+	j=0;
+	for (d=i-1; d>=0; d--)
+		pnum[j++]=num[d];
+	pnum[j]=0;
+}
 
 /*perform a process switch*/
 void handletimerinterrupt(short segment, short sp)
 {
-	int i,cntr=79;
+	int i,j,cntr=79;
+	char context_switches_string[12];
+	char p;
+	int found=0;
+	
 	/*save current process*/
 	process_table[current_process].segment=segment;
 	process_table[current_process].sp=sp;
@@ -502,6 +557,7 @@ void handletimerinterrupt(short segment, short sp)
 	{
 		if (process_table[i].active>0)
 		{
+			getnumberstring(context_switches_string, process_table[i].context_switches);
 			printtop('P',cntr-5);
 			printtop((char)(i+0x30),cntr-4);
 			printtop(' ',cntr-3);
@@ -511,8 +567,8 @@ void handletimerinterrupt(short segment, short sp)
 				printtop('W',cntr-2);
 			else if (process_table[i].active==3)
 				printtop('K',cntr-2);
-			printtop(' ',cntr-1);
-			printtop(' ',cntr);
+			printtop(context_switches_string[0],cntr-1);
+			printtop(context_switches_string[1],cntr);
 			cntr=cntr-6;
 		}
 	}
@@ -530,15 +586,85 @@ void handletimerinterrupt(short segment, short sp)
 	printtop('r',cntr-10);
 	printtop('P',cntr-11);
 
+	getnumberstring(context_switches_string, context_switches);
+
+	printtop(context_switches_string[0],cntr-17);
+	printtop(context_switches_string[1],cntr-16);
+	printtop(context_switches_string[2],cntr-15);
+	printtop(' ',cntr-14);
+
 	/*find an active process round robin style*/
 	i=current_process;
-	do
+	printtop(' ',cntr-12);
+	printtop(scheduler,cntr-13);
+	switch(scheduler)
 	{
-		i++;
-		if (i==MAXPROCESSES)
-			i=0;
-	} while(process_table[i].active!=1);
-
+		case FIFO:
+			if(process_table[i].active!=1) 
+			{
+				do
+				{
+					i++;
+					if (i==MAXPROCESSES)
+						i=0;
+				} while(process_table[i].active!=1);
+			}
+		break;
+		case PRIORITY:
+			if(process_table[i].active!=1) 
+			{
+				for(p='a'; p<=MINPRIORITY; p++) 
+				{
+					for(i=current_process+1; i<=MAXPROCESSES; i++)
+					{
+						if (i==MAXPROCESSES) 
+							i=0;
+						if(i==current_process)
+							break;
+						if(process_table[i].active==1  && process_table[i].priority==p)
+						{
+							found=1;
+							break;
+						}
+					}
+					if(found)
+						break;
+				}
+			}
+		break;
+		case ROUND_ROBIN:
+			do
+			{
+				i++;
+				if (i==MAXPROCESSES)
+					i=0;
+			} while(process_table[i].active!=1);
+		break;
+		case ROUND_ROBIN_PRIORITY:
+			for(p='a'; p<=MINPRIORITY; p++) 
+			{
+				for(i=current_process+1; i<=MAXPROCESSES; i++)
+				{
+					if (i==MAXPROCESSES) 
+						i=0;
+					if(process_table[i].active==1  && process_table[i].priority==p)
+					{
+						found=1;
+						break;
+					}
+					if(i==current_process)
+						break;
+				}
+				if(found)
+					break;
+			}
+		break;
+	}
+	if(i!=current_process)
+	{
+		context_switches++;
+		process_table[i].context_switches++;
+	}
 	current_process=i;
 
 	/*restore that process*/
