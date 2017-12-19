@@ -3,4 +3,4 @@
 #define ROUND_ROBIN 'R'
 #define ROUND_ROBIN_PRIORITY 'M'
 
-#define MINPRIORITY 'c'
+#define MINPRIORITY 'd'

@@ -12,4 +12,4 @@ gcc -o loadFile loadFile.c
 ./loadProgram.sh prun
 ./loadProgram.sh rrun
 ./loadProgram.sh mrun
-./loadProgram.sh clean
+./loadProgram.sh flush

@@ -45,7 +45,7 @@ void doexit()
 	setcursor(0,0);
 
 	readfile("SHELL\0",program);
-	executeprogrambackground(program,12800,'c');
+	executeprogrambackground(program,12800,MINPRIORITY);
 	exit();
 }
 
@@ -60,7 +60,7 @@ void doexecute()
 
 	clearscreen();
 	setcursor(0,0);
-	executeprogram(program,12800,'c');
+	executeprogram(program,12800,MINPRIORITY);
 
 	/*wait for carriage return*/
 	while(getchar()!=0xd);

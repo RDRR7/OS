@@ -1,3 +1,5 @@
+#include "scheduler.h"
+
 void readsector(int, char*);
 void writesector(int, char*);
 void putchar(char);
