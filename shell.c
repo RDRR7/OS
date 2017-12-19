@@ -78,9 +78,9 @@ void doexecute(char* line, int fore)
 	{
 		/*use fore to pick one of the library functions*/
 		if (fore==1)
-			executeprogram(program,12800,'c');
+			executeprogram(program,12800,MINPRIORITY);
 		else
-			executeprogrambackground(program,12800,'c');
+			executeprogrambackground(program,12800,MINPRIORITY);
 	}
 }
 

@@ -404,7 +404,7 @@ void executeprogram(char* filebuffer, int length, int foreground, char priority)
 		return;
 	}
 	if(priority<'a' || priority>MINPRIORITY)
-		priority='c';
+		priority=MINPRIORITY;
 	/*set the process entry to active, set the stack pointer*/
 	seg=process_table[i].segment;
 	process_table[i].active=1;
@@ -655,16 +655,38 @@ void handletimerinterrupt(short segment, short sp)
 			}
 		break;
 		case ROUND_ROBIN_PRIORITY:
-			do
+			if(1==1) 
 			{
-				i++;
-				if (i==MAXPROCESSES)
-					i=0;
-			} while(process_table[i].active!=1);
-			if(i!=current_process) 
-			{
-				context_switches++;
-				process_table[i].context_switches++;
+				int found=0;
+				char p;
+
+				for(p='a'; p<=MINPRIORITY; p++) 
+				{
+					for(i=current_process+1; i<=MAXPROCESSES; i++)
+					{
+						printtop((char)(i+0x30),5);
+						if (i==MAXPROCESSES) 
+						{
+							i=0;
+						}
+						if(process_table[i].active==1  && process_table[i].priority==p)
+						{
+							found=1;
+							break;
+						}
+						if(i==current_process)
+						{
+							break;
+						}
+					}
+					if(found)
+						break;
+				}
+				if(i!=current_process) 
+				{
+					context_switches++;
+					process_table[i].context_switches++;
+				}
 			}
 		break;
 	}
