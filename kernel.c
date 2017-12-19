@@ -647,13 +647,13 @@ void handletimerinterrupt(short segment, short sp)
 				{
 					if (i==MAXPROCESSES) 
 						i=0;
-					if(i==current_process)
-						break;
 					if(process_table[i].active==1  && process_table[i].priority==p)
 					{
 						found=1;
 						break;
 					}
+					if(i==current_process)
+						break;
 				}
 				if(found)
 					break;
